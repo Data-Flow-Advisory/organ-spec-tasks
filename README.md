@@ -70,11 +70,14 @@ result = decide(state, {})
 
 ```bash
 python organ.py < samples/claim_next.json
+# or, per the orchestrator CONTRACT, point ORGAN_INPUT at the payload file:
+ORGAN_INPUT=samples/claim_next.json python organ.py
 ```
 
-Reads `{state, context}` on stdin (or `$ORGAN_INPUT`) and writes
-`{output, rationale, self_metric}` to stdout, so the orchestrator can shell
-out to it like any other organ.
+Reads the `{state, context}` payload from the file named by `$ORGAN_INPUT`
+when that env var is set (it takes precedence), otherwise from stdin, and
+writes `{output, rationale, self_metric}` to stdout — so the orchestrator can
+shell out to it like any other organ.
 
 ## State schema
 

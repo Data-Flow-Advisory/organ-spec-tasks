@@ -90,6 +90,12 @@ jobs:
             name="$(basename "$sample" .json)"
             echo "## Sample: $name" >> "$GITHUB_STEP_SUMMARY"
             echo '```json' >> "$GITHUB_STEP_SUMMARY"
-            python organ.py < "$sample" | python -m json.tool >> "$GITHUB_STEP_SUMMARY"
+            # Invoke via ORGAN_INPUT (the file-path contract the orchestrator
+            # runner uses) — NOT only via stdin — and fail the job if the
+            # organ emits an error decision. A stdin-only shadow-run hid a
+            # latent bug where ORGAN_INPUT was parsed as inline JSON.
+            out="$(ORGAN_INPUT="$sample" python organ.py)"
+            printf '%s\n' "$out" | python -m json.tool >> "$GITHUB_STEP_SUMMARY"
             echo '```' >> "$GITHUB_STEP_SUMMARY"
+            printf '%s' "$out" | python -c "import sys, json; d=json.load(sys.stdin); dec=d['output']['decision']; sys.exit(f'sample {\"$name\"} errored: {d[\"rationale\"]}') if dec=='error' else None"
           done

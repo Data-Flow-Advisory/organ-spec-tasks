@@ -437,10 +437,22 @@ decide_next_task = decide
 # ---------------------------------------------------------------------------
 
 def _read_input() -> Dict[str, Any]:
-    text = sys.stdin.read()
+    # Per the orchestrator CONTRACT, ORGAN_INPUT names the *file* to read
+    # the JSON payload from, and takes precedence over stdin. (The
+    # conformance workflow invokes the organ as
+    # ``ORGAN_INPUT="$s" python3 organ.py`` with ``$s`` a sample path — so
+    # treating ORGAN_INPUT as inline JSON, or only consulting it when stdin
+    # is empty, made every file-based invocation fail to parse.)
+    import os
+
+    path = os.getenv("ORGAN_INPUT")
+    if path:
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+    else:
+        text = sys.stdin.read()
     if not text.strip():
-        import os
-        text = os.getenv("ORGAN_INPUT", "{}")
+        return {}
     data = json.loads(text)
     return data if isinstance(data, dict) else {}
 

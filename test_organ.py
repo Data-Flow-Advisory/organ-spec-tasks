@@ -362,3 +362,66 @@ def test_sample_blocked():
     data = json.loads((Path(__file__).parent / "samples" / "blocked_failed_dep.json").read_text())
     out = decide(data["state"], data.get("context"))["output"]
     assert out["decision"] == "blocked"
+
+
+# ---------------------------------------------------------------------------
+# CLI entrypoint — the ORGAN_INPUT file contract (exercises main(), not just
+# decide()). Regression guard: the runner and the conformance workflow invoke
+# the organ as ``ORGAN_INPUT=<path> python3 organ.py``; reading ORGAN_INPUT as
+# inline JSON (or only as a stdin fallback) made every sample CLI run error.
+# ---------------------------------------------------------------------------
+
+import os
+import subprocess
+import sys
+
+_ORGAN = str(Path(__file__).parent / "organ.py")
+
+
+def _run_cli(env=None, stdin_text=""):
+    proc = subprocess.run(
+        [sys.executable, _ORGAN],
+        input=stdin_text,
+        capture_output=True,
+        text=True,
+        env={**os.environ, **(env or {})},
+    )
+    return proc
+
+
+def test_cli_reads_organ_input_file_path():
+    """ORGAN_INPUT is a FILE PATH; every sample must run clean (no error)."""
+    sample_dir = Path(__file__).parent / "samples"
+    for f in sorted(sample_dir.glob("*.json")):
+        proc = _run_cli(env={"ORGAN_INPUT": str(f)})
+        assert proc.returncode == 0, f"{f.name}: rc={proc.returncode} err={proc.stderr}"
+        report = json.loads(proc.stdout)
+        _assert_valid_report(report)
+        assert report["output"]["decision"] != "error", (
+            f"{f.name} produced an error decision via ORGAN_INPUT: "
+            f"{report['rationale']}"
+        )
+
+
+def test_cli_organ_input_matches_direct_decide():
+    """CLI output via ORGAN_INPUT must equal a direct decide() call."""
+    f = Path(__file__).parent / "samples" / "claim_next.json"
+    proc = _run_cli(env={"ORGAN_INPUT": str(f)})
+    data = json.loads(f.read_text())
+    expected = decide(data["state"], data.get("context"))
+    assert json.loads(proc.stdout) == expected
+
+
+def test_cli_organ_input_precedes_stdin():
+    """A set ORGAN_INPUT wins over piped stdin (file is the explicit override)."""
+    f = Path(__file__).parent / "samples" / "spec_complete.json"
+    proc = _run_cli(env={"ORGAN_INPUT": str(f)}, stdin_text='{"state": {}}')
+    assert proc.returncode == 0
+    assert json.loads(proc.stdout)["output"]["decision"] == "spec_complete"
+
+
+def test_cli_reads_stdin_when_no_organ_input():
+    f = Path(__file__).parent / "samples" / "claim_next.json"
+    proc = _run_cli(env={"ORGAN_INPUT": ""}, stdin_text=f.read_text())
+    assert proc.returncode == 0
+    assert json.loads(proc.stdout)["output"]["decision"] == "claim"
