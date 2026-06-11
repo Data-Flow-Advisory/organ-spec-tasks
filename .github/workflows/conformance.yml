@@ -79,6 +79,14 @@ jobs:
           print(f'OK stdlib-only (imports: {sorted(set(found))})')
           "
 
+      - name: Check connection-standard ports manifest
+        run: |
+          # CONNECTORS.md: ports.json parses; every port type exists in the
+          # shared vocabulary (types.json, vendored); and decide() actually
+          # reads each declared input name and writes each declared output
+          # name (sampled against the organ's own samples).
+          python check_ports.py
+
       - name: Run pytest suite
         run: python -m pytest test_organ.py -v --tb=short
 

@@ -1,0 +1,340 @@
+{
+  "_README": "VENDORED snapshot of the orchestrator's shared connection-type vocabulary (Data-Flow-Advisory/orchestrator @ feat/drift-gate:types.json), plus the spec-task-pipeline types organ-spec-tasks PROPOSES for upstream review (each flagged \"proposed\": true). Vendored because the conformance Action's GITHUB_TOKEN is scoped to this repo and cannot read the orchestrator's (unmerged-branch) file. Once the proposed types land in the canonical types.json, drop the flags and re-sync this snapshot. Two organ ports connect iff their `type` matches. See CONNECTORS.md.",
+  "version": 1,
+  "types": {
+    "TenantContext": {
+      "desc": "A resolved tenant: identity, branding, provenance bag.",
+      "schema": {
+        "tenant_id": "int",
+        "slug": "str",
+        "brand": "object",
+        "provenance": "object"
+      },
+      "produced_by_eg": [
+        "organ-tenant"
+      ],
+      "consumed_by_eg": [
+        "organ-branding",
+        "organ-system-blueprint"
+      ]
+    },
+    "SiteCrawl": {
+      "desc": "Signals crawled from a prospect's website at signup.",
+      "schema": {
+        "url": "str",
+        "industry": "str",
+        "competitors": "array",
+        "palette": "array",
+        "description": "str"
+      },
+      "produced_by_eg": [
+        "organ-site-crawl"
+      ],
+      "consumed_by_eg": [
+        "organ-branding",
+        "organ-tenant"
+      ]
+    },
+    "InterviewTranscript": {
+      "desc": "Ordered Q&A pairs from a discovery interview.",
+      "schema": {
+        "interview_id": "int",
+        "qa": "array<{question:str,answer:str,asked_at:str}>"
+      },
+      "produced_by_eg": [
+        "organ-claude-service"
+      ],
+      "consumed_by_eg": [
+        "organ-fact-extractor",
+        "organ-process-flow"
+      ]
+    },
+    "KeyFacts": {
+      "desc": "Themed facts extracted from a transcript (the discovery memory).",
+      "schema": {
+        "facts": "array<{theme:str,fact:str,evidence:array}>"
+      },
+      "produced_by_eg": [
+        "organ-fact-extractor"
+      ],
+      "consumed_by_eg": [
+        "organ-system-blueprint",
+        "organ-entity-deduplication-service"
+      ]
+    },
+    "EntityGraph": {
+      "desc": "Deduplicated canonical entities (people, systems, tools) per tenant.",
+      "schema": {
+        "entities": "array<{canonical:str,aliases:array,kind:str}>"
+      },
+      "produced_by_eg": [
+        "organ-entity-deduplication-service"
+      ],
+      "consumed_by_eg": [
+        "organ-system-blueprint"
+      ]
+    },
+    "Blueprint": {
+      "desc": "The system blueprint: modules + integrations + current/recommended state.",
+      "schema": {
+        "modules": "array<{name:str,integrations:array,screen_concept:str}>",
+        "integrations": "array<{name:str,purpose:str}>"
+      },
+      "produced_by_eg": [
+        "organ-system-blueprint"
+      ],
+      "consumed_by_eg": [
+        "organ-solutions-engine",
+        "organ-react-flow-blueprint",
+        "organ-pdf-report"
+      ]
+    },
+    "RecommendationList": {
+      "desc": "SaaS + bespoke-build recommendations, competitor-weighted.",
+      "schema": {
+        "recommendations": "array<{name:str,purpose:str,kind:str}>"
+      },
+      "produced_by_eg": [
+        "organ-solutions-engine"
+      ],
+      "consumed_by_eg": [
+        "organ-pdf-report"
+      ]
+    },
+    "ProcessFlow": {
+      "desc": "Sequence / swimlane of a workflow extracted from transcript themes.",
+      "schema": {
+        "steps": "array<{actor:str,action:str,system:str}>"
+      },
+      "produced_by_eg": [
+        "organ-process-flow"
+      ],
+      "consumed_by_eg": [
+        "organ-react-flow-blueprint"
+      ]
+    },
+    "AccountState": {
+      "desc": "A fleet account's pacing/quota state (the pace + drift gates' input).",
+      "schema": {
+        "utilization_pct": "number",
+        "resets_at": "str",
+        "tier_cap_4h": "int"
+      },
+      "produced_by_eg": [
+        "organ-account-health"
+      ],
+      "consumed_by_eg": [
+        "organ-pace-gate",
+        "organ-drift-gate",
+        "organ-burn-pacing"
+      ]
+    },
+    "PendingItems": {
+      "desc": "Work items awaiting prioritisation (APES input).",
+      "schema": {
+        "items": "array<{id:any,atoms:object}>"
+      },
+      "produced_by_eg": [
+        "organ-feed-adapters-github-adapter"
+      ],
+      "consumed_by_eg": [
+        "organ-prioritiser"
+      ]
+    },
+    "RankedItems": {
+      "desc": "APES-ranked items + human-decision / culled buckets.",
+      "schema": {
+        "ranked": "array",
+        "human_decision": "array",
+        "culled": "array"
+      },
+      "produced_by_eg": [
+        "organ-prioritiser"
+      ],
+      "consumed_by_eg": [
+        "organ-queue-admission"
+      ]
+    },
+    "ClaimVerdict": {
+      "desc": "Whether a worker may claim work now, and why (gate output).",
+      "schema": {
+        "allow": "bool",
+        "reason": "str"
+      },
+      "produced_by_eg": [
+        "organ-pace-gate",
+        "organ-drift-gate",
+        "organ-queue-admission"
+      ],
+      "consumed_by_eg": [
+        "organ-claim-router"
+      ]
+    },
+    "BillingState": {
+      "desc": "A tenant's subscription / billing state + feature entitlements.",
+      "schema": {
+        "tier": "str",
+        "status": "str",
+        "features": "array"
+      },
+      "produced_by_eg": [
+        "organ-airwallex-billing",
+        "organ-billing-provider"
+      ],
+      "consumed_by_eg": [
+        "organ-feature-gates"
+      ]
+    },
+    "ConformanceVerdict": {
+      "desc": "Whether an organ/output conforms + groundedness (self_metric shape).",
+      "schema": {
+        "conforms": "bool",
+        "confidence": "number",
+        "reasons": "array"
+      },
+      "produced_by_eg": [
+        "organ-readiness"
+      ],
+      "consumed_by_eg": []
+    },
+    "ApparatusSource": {
+      "desc": "A pointer to something the fresh apparatus should scan for useful specs/features \u2014 the OLD apparatus or any source.",
+      "schema": {
+        "kind": "discovery-engine|notion|github|transcript|docs|rebuild-backlog",
+        "ref": "str"
+      },
+      "produced_by_eg": [],
+      "consumed_by_eg": [
+        "organ-discernment"
+      ]
+    },
+    "RawArtefacts": {
+      "desc": "Raw scanned content from a source, before it is decomposed into discrete features.",
+      "schema": {
+        "items": "array"
+      },
+      "produced_by_eg": [
+        "organ-discernment"
+      ],
+      "consumed_by_eg": [
+        "organ-decompose-to-execute"
+      ]
+    },
+    "CandidateFeatures": {
+      "desc": "Discrete specs/features decomposed out of the raw scan \u2014 the candidates to judge.",
+      "schema": {
+        "features": "array<{title:str,spec:str,source_ref:str}>"
+      },
+      "produced_by_eg": [
+        "organ-decompose-to-execute"
+      ],
+      "consumed_by_eg": [
+        "organ-prioritiser"
+      ]
+    },
+    "JudgedFeatures": {
+      "desc": "Candidates after judgment \u2014 the useful ranked, the useless rejected (reject is first-class).",
+      "schema": {
+        "useful": "array",
+        "rejected": "array"
+      },
+      "produced_by_eg": [
+        "organ-prioritiser"
+      ],
+      "consumed_by_eg": [
+        "organ-readiness"
+      ]
+    },
+    "ProvenancedArtefact": {
+      "desc": "Any spec/feature the scan-and-select takes from the OLD apparatus, wrapped with its origin + succession status so the new machine knows it as inherited, never native. Retain history, know it as such \u2014 succession baked in, the antidote to old-artefacts-polluting-new. See FRESH_APPARATUS.md.",
+      "schema": {
+        "artefact": "object",
+        "provenance": {
+          "source": "str",
+          "origin_ref": "str",
+          "scanned_at": "str"
+        },
+        "succession": {
+          "status": "inherited|validated|native|superseded|retired",
+          "native": "bool"
+        }
+      },
+      "produced_by_eg": [
+        "organ-discernment"
+      ],
+      "consumed_by_eg": [
+        "the-fresh-apparatus-injector"
+      ]
+    },
+    "SpecTask": {
+      "desc": "A single task in a technical spec's execution graph: an addressable unit of build work with its dependencies, acceptance criteria and current execution status. Element of SpecTaskGraph; emitted as the next task to claim.",
+      "schema": {
+        "id": "str",
+        "title": "str",
+        "dependencies": "array<str>",
+        "complexity": "str",
+        "suggested_model": "str",
+        "acceptance_criteria": "array<str>",
+        "status": "pending|in_progress|completed|completed_pending_review|failed"
+      },
+      "produced_by_eg": [
+        "organ-spec-tasks"
+      ],
+      "consumed_by_eg": [
+        "organ-spec-tasks",
+        "organ-claim-router"
+      ],
+      "proposed": true
+    },
+    "SpecTaskGraph": {
+      "desc": "The ordered task DAG of an approved technical spec \u2014 the task definitions a worker sequences through. An array of SpecTask definitions, declaration-ordered (the claim scan is order-preserving).",
+      "schema": "array<SpecTask>",
+      "produced_by_eg": [
+        "organ-decompose-to-execute",
+        "organ-team-spec"
+      ],
+      "consumed_by_eg": [
+        "organ-spec-tasks"
+      ],
+      "proposed": true
+    },
+    "TaskStateMap": {
+      "desc": "Per-task execution state for a spec, keyed by task id. A task with no slot defaults to pending. completed_pending_review counts as terminal-done for both dependency satisfaction and the spec roll-up.",
+      "schema": {
+        "<task_id>": {
+          "status": "pending|in_progress|completed|completed_pending_review|failed",
+          "error_message": "str?"
+        }
+      },
+      "produced_by_eg": [
+        "organ-spec-tasks-runner"
+      ],
+      "consumed_by_eg": [
+        "organ-spec-tasks"
+      ],
+      "proposed": true
+    },
+    "ApprovalGate": {
+      "desc": "The human approval gate on a spec: True once an operator has approved the spec so its tasks become claimable. Mirrors claim_next_task's PermissionError-on-unapproved hard gate.",
+      "schema": "bool",
+      "produced_by_eg": [
+        "organ-spec-approval"
+      ],
+      "consumed_by_eg": [
+        "organ-spec-tasks"
+      ],
+      "proposed": true
+    },
+    "SpecSequenceDecision": {
+      "desc": "The single next action a worker should take against a spec's task graph \u2014 the sequencing verdict.",
+      "schema": "not_approved|no_tasks|claim|spec_complete|in_progress|blocked|error",
+      "produced_by_eg": [
+        "organ-spec-tasks"
+      ],
+      "consumed_by_eg": [
+        "organ-claim-router"
+      ],
+      "proposed": true
+    }
+  }
+}
