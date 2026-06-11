@@ -1,0 +1,95 @@
+name: conformance
+
+# Verifies the pure-organ contract for organ-spec-tasks:
+#   decide(state, context) -> {output, rationale, self_metric}
+# deterministic, fail-safe, stdlib-only. Runs the pytest suite (with pytest
+# explicitly installed — organ-* repos go RED if CI runs `python -m pytest`
+# without ever installing it) and exercises the organ against its samples.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install pytest
+        run: python -m pip install --upgrade pip pytest
+
+      - name: Check pure-organ signature
+        run: |
+          python -c "
+          import inspect
+          from organ import decide
+          params = list(inspect.signature(decide).parameters.keys())
+          assert params[:2] == ['state', 'context'], f'bad signature: {params}'
+          print('OK signature: decide(state, context)')
+          "
+
+      - name: Check fail-safe on empty state
+        run: |
+          python -c "
+          from organ import decide
+          r = decide({}, {})
+          assert set(r) == {'output', 'rationale', 'self_metric'}, r.keys()
+          assert 'decision' in r['output']
+          c = r['self_metric']['confidence']
+          assert 0.0 <= c <= 1.0, c
+          print(f'OK fail-safe (confidence {c})')
+          "
+
+      - name: Check determinism
+        run: |
+          python -c "
+          from organ import decide
+          state = {'approved': True,
+                   'tasks': [{'id': 'T1'}, {'id': 'T2', 'dependencies': ['T1']}],
+                   'task_states': {'T1': {'status': 'completed'}}}
+          assert decide(state, {}) == decide(state, {})
+          print('OK deterministic')
+          "
+
+      - name: Check stdlib-only (no external imports)
+        run: |
+          python -c "
+          import ast
+          stdlib_allowed = {'json', 're', 'sys', 'os', 'typing', '__future__'}
+          tree = ast.parse(open('organ.py').read())
+          found = []
+          for node in ast.walk(tree):
+              if isinstance(node, ast.Import):
+                  found += [a.name.split('.')[0] for a in node.names]
+              elif isinstance(node, ast.ImportFrom):
+                  if node.module:
+                      found.append(node.module.split('.')[0])
+          external = sorted({m for m in found if m not in stdlib_allowed})
+          assert not external, f'non-stdlib imports: {external}'
+          print(f'OK stdlib-only (imports: {sorted(set(found))})')
+          "
+
+      - name: Run pytest suite
+        run: python -m pytest test_organ.py -v --tb=short
+
+      - name: Run organ against samples
+        run: |
+          set -euo pipefail
+          echo "# Spec-Tasks Organ — Conformance Report" >> "$GITHUB_STEP_SUMMARY"
+          for sample in samples/*.json; do
+            name="$(basename "$sample" .json)"
+            echo "## Sample: $name" >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            python organ.py < "$sample" | python -m json.tool >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          done

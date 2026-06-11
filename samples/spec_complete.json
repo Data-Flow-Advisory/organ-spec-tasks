@@ -1,0 +1,16 @@
+{
+  "state": {
+    "approved": true,
+    "tasks": [
+      {"id": "T1", "title": "Add migration", "dependencies": []},
+      {"id": "T2", "title": "Wire the endpoint", "dependencies": ["T1"]},
+      {"id": "T3", "title": "Add admin UI", "dependencies": ["T2"]}
+    ],
+    "task_states": {
+      "T1": {"status": "completed"},
+      "T2": {"status": "completed_pending_review"},
+      "T3": {"status": "completed"}
+    }
+  },
+  "context": {"reason": "every task terminal-done (T2 is completed_pending_review, still counts) so the spec rolls up to resolved"}
+}

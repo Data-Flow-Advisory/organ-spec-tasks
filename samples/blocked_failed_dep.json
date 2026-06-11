@@ -1,0 +1,16 @@
+{
+  "state": {
+    "approved": true,
+    "tasks": [
+      {"id": "T1", "title": "Add migration", "dependencies": []},
+      {"id": "T2", "title": "Wire the endpoint", "dependencies": ["T1"]},
+      {"id": "T3", "title": "Add admin UI", "dependencies": ["T2"]}
+    ],
+    "task_states": {
+      "T1": {"status": "failed", "error_message": "rebase conflict"},
+      "T2": {"status": "pending"},
+      "T3": {"status": "pending"}
+    }
+  },
+  "context": {"reason": "T1 failed, nothing in flight, spec incomplete; T2/T3 deadlocked on the failed dep until reset_task re-opens T1"}
+}

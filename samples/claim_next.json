@@ -1,0 +1,17 @@
+{
+  "state": {
+    "approved": true,
+    "tasks": [
+      {"id": "T1", "title": "Add migration", "dependencies": [], "complexity": "low"},
+      {"id": "T2", "title": "Wire the endpoint", "dependencies": ["T1"], "complexity": "medium",
+       "acceptance_criteria": ["endpoint returns 200", "row is persisted"]},
+      {"id": "T3", "title": "Add admin UI", "dependencies": ["T2"], "complexity": "medium"}
+    ],
+    "task_states": {
+      "T1": {"status": "completed"},
+      "T2": {"status": "pending"},
+      "T3": {"status": "pending"}
+    }
+  },
+  "context": {"reason": "T1 done; T2 deps satisfied so it is the next claimable task"}
+}
