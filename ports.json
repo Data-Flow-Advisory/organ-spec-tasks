@@ -1,0 +1,12 @@
+{
+  "_README": "The connection manifest for organ-spec-tasks (the Lego stud). Each port's `name` is the LITERAL wiring address: an input name is the key decide() reads under `state`; an output name is the key it writes under `output`. Each `type` is a name from the shared vocabulary in types.json — two ports connect iff their types match. See CONNECTORS.md.",
+  "_notes": "decide() reads three distinct keys from state (approved, tasks, task_states) — three input ports a spec-writer organ would each feed. It produces ONE logical product, the next-action decision; its flat output keys (decision, next_task, total_tasks, completed_tasks, completion_pct, blocked_task_ids) are facets of that one product, modelled here as a single output port `decision` typed SpecTaskDecision (whose schema enumerates the full shape). All four types are PROPOSED additions to the vocabulary — see types.json._proposed.",
+  "inputs": [
+    {"name": "approved", "type": "ApprovalGate", "required": true},
+    {"name": "tasks", "type": "SpecTaskGraph", "required": true},
+    {"name": "task_states", "type": "TaskStateMap", "required": false}
+  ],
+  "outputs": [
+    {"name": "decision", "type": "SpecTaskDecision"}
+  ]
+}

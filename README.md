@@ -87,6 +87,45 @@ shell out to it like any other organ.
 | `tasks`       | list | `[]`    | Task definitions: `{id, title, dependencies, acceptance_criteria, complexity, suggested_model, ...}`. Entries without a truthy `id` are dropped. |
 | `task_states` | dict | `{}`    | `{task_id: {"status": ...}}`. A task with no slot defaults to `pending`. Statuses: `pending`, `in_progress`, `completed`, `completed_pending_review`, `failed`. |
 
+## Connection ports (the Lego stud)
+
+Beyond the uniform `decide(...)` *shape*, this organ declares a typed
+`ports.json` manifest so the composer can wire it to other organs **by type**,
+not by hand-written adapter (see the orchestrator's `CONNECTORS.md`). Each
+port's `name` is the literal wiring address — an input name is the key `decide`
+reads under `state`, an output name the key it writes under `output` — and each
+`type` is a name from the shared vocabulary (`types.json`). Two ports connect
+iff their `type` matches.
+
+| direction | name          | type               | required |
+|-----------|---------------|--------------------|----------|
+| input     | `approved`    | `ApprovalGate`     | yes      |
+| input     | `tasks`       | `SpecTaskGraph`    | yes      |
+| input     | `task_states` | `TaskStateMap`     | no       |
+| output    | `decision`    | `SpecTaskDecision` | —        |
+
+`decide` produces one logical product — the next-action decision — whose flat
+output keys (`decision`, `next_task`, `total_tasks`, `completed_tasks`,
+`completion_pct`, `blocked_task_ids`) are facets of that single product,
+modelled as one output port `decision` typed `SpecTaskDecision` (its schema
+enumerates the full shape).
+
+**The spec-task pipeline domain was absent from the seed vocabulary**, so this
+PR mints four new types — `SpecTaskGraph`, `TaskStateMap`, `ApprovalGate`,
+`SpecTaskDecision` — listed under `types.json._proposed` and **proposed for
+review/upstreaming** into the orchestrator vocabulary. `types.json` here is a
+pinned copy of the orchestrator vocabulary plus these additions, so the
+`conformance` Action can validate ports **offline** (stdlib-only, no network).
+
+`check_ports.py` is the offline port check (also run by the `conformance`
+Action): it asserts `ports.json` parses, every declared port type exists in
+`types.json`, and `decide` actually reads each declared input name and writes
+each declared output name (sampled against the organ's own samples).
+
+```bash
+python check_ports.py
+```
+
 ## Exported pure helpers
 
 Besides `decide`, the module exports the building blocks (all pure):
@@ -109,7 +148,8 @@ python -m pytest test_organ.py -v
 
 The GitHub `conformance` Action runs the suite across Python 3.10–3.12, checks
 the `decide(state, context)` signature, fail-safe behaviour, determinism,
-stdlib-only imports, and renders each sample into the job summary.
+stdlib-only imports, the ports manifest (`check_ports.py` — see "Connection
+ports" above), and renders each sample into the job summary.
 
 ## Provenance
 

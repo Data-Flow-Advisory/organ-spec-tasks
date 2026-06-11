@@ -82,6 +82,15 @@ jobs:
       - name: Run pytest suite
         run: python -m pytest test_organ.py -v --tb=short
 
+      - name: Check ports manifest (the Connection Standard / Lego stud)
+        run: |
+          # Asserts ports.json parses, every declared port type exists in the
+          # shared vocabulary (types.json), and decide() actually reads each
+          # declared input name and writes each declared output name. See
+          # CONNECTORS.md — an organ with no valid ports manifest is
+          # connectable-by-luck only.
+          python check_ports.py
+
       - name: Run organ against samples
         run: |
           set -euo pipefail
