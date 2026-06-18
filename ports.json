@@ -1,0 +1,12 @@
+{
+  "_README": "Typed connection manifest for organ-spec-tasks, per the orchestrator Connection Standard (CONNECTORS.md). 'name' is the literal key decide() reads under `state` (inputs) / writes under `output` (outputs); 'type' is a name from the shared vocabulary (types.json). Two ports connect iff their type matches.",
+  "inputs": [
+    {"name": "tasks", "type": "SpecTaskGraph", "required": true},
+    {"name": "approved", "type": "ApprovalGate", "required": true},
+    {"name": "task_states", "type": "TaskStateMap", "required": false}
+  ],
+  "outputs": [
+    {"name": "decision", "type": "SpecSequenceDecision"},
+    {"name": "next_task", "type": "SpecTask"}
+  ]
+}

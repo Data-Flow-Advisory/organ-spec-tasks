@@ -87,6 +87,41 @@ shell out to it like any other organ.
 | `tasks`       | list | `[]`    | Task definitions: `{id, title, dependencies, acceptance_criteria, complexity, suggested_model, ...}`. Entries without a truthy `id` are dropped. |
 | `task_states` | dict | `{}`    | `{task_id: {"status": ...}}`. A task with no slot defaults to `pending`. Statuses: `pending`, `in_progress`, `completed`, `completed_pending_review`, `failed`. |
 
+## Connection ports (Connection Standard)
+
+Per the orchestrator [Connection Standard](https://github.com/Data-Flow-Advisory/orchestrator/blob/feat/drift-gate/CONNECTORS.md),
+this organ declares a typed-port manifest in [`ports.json`](ports.json) so the
+composer can wire it by **type**, not by hand. A port's `name` is the literal
+key `decide()` reads under `state` (inputs) / writes under `output` (outputs);
+its `type` is a name from the shared vocabulary ([`types.json`](types.json)).
+
+| direction | name          | type                   | required |
+|-----------|---------------|------------------------|----------|
+| input     | `tasks`       | `SpecTaskGraph`        | yes      |
+| input     | `approved`    | `ApprovalGate`         | yes      |
+| input     | `task_states` | `TaskStateMap`         | no       |
+| output    | `decision`    | `SpecSequenceDecision` | —        |
+| output    | `next_task`   | `SpecTask`             | —        |
+
+`next_task` is a `SpecTask`, and `tasks` is a `SpecTaskGraph` (an
+`array<SpecTask>`) — so any organ that produces `SpecTask`s can feed this one,
+and this organ's selected `next_task` snaps into any consumer that accepts a
+`SpecTask` (e.g. a claim router).
+
+**Proposed vocabulary types.** The spec-task-pipeline domain isn't covered by
+the seed vocabulary, so the five types above (`SpecTask`, `SpecTaskGraph`,
+`TaskStateMap`, `ApprovalGate`, `SpecSequenceDecision`) are **proposed** here
+for upstream review — each is flagged `"proposed": true` in the **vendored**
+`types.json` snapshot. They should be merged into the orchestrator's canonical
+`types.json`; until then they're vendored because the conformance Action's
+token can't reach the (unmerged-branch) canonical file. Once upstreamed, drop
+the flags and re-sync the snapshot.
+
+The conformance Action runs `check_ports.py`, which asserts `ports.json`
+parses, every port `type` exists in the vocabulary, and `decide` reads each
+declared input name and writes each declared output name (sampled against the
+organ's own samples).
+
 ## Exported pure helpers
 
 Besides `decide`, the module exports the building blocks (all pure):
@@ -109,7 +144,8 @@ python -m pytest test_organ.py -v
 
 The GitHub `conformance` Action runs the suite across Python 3.10–3.12, checks
 the `decide(state, context)` signature, fail-safe behaviour, determinism,
-stdlib-only imports, and renders each sample into the job summary.
+stdlib-only imports, the [connection ports manifest](#connection-ports-connection-standard)
+(`check_ports.py`), and renders each sample into the job summary.
 
 ## Provenance
 

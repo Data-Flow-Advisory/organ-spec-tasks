@@ -425,3 +425,43 @@ def test_cli_reads_stdin_when_no_organ_input():
     proc = _run_cli(env={"ORGAN_INPUT": ""}, stdin_text=f.read_text())
     assert proc.returncode == 0
     assert json.loads(proc.stdout)["output"]["decision"] == "claim"
+
+
+# ---------------------------------------------------------------------------
+# Connection-Standard ports manifest (CONNECTORS.md) — ports.json + types.json.
+# ---------------------------------------------------------------------------
+
+class TestPortsManifest:
+    """The typed-port manifest conforms to the orchestrator Connection Standard."""
+
+    def test_ports_conformance_passes(self):
+        """verify_ports() raises on any standard violation; here it must pass."""
+        from check_ports import verify_ports
+
+        summary = verify_ports()
+        assert set(summary["inputs"]) == {"approved", "task_states", "tasks"}
+        assert set(summary["outputs"]) == {"decision", "next_task"}
+
+    def test_every_port_type_is_in_the_vocabulary(self):
+        """Every declared port type must exist as a key in types.json."""
+        here = Path(__file__).parent
+        ports = json.loads((here / "ports.json").read_text())
+        vocab = set(json.loads((here / "types.json").read_text())["types"].keys())
+        for port in ports["inputs"] + ports["outputs"]:
+            assert port["type"] in vocab, port
+
+    def test_declared_outputs_are_actually_written(self):
+        """Each declared output name is a key under output for every sample."""
+        here = Path(__file__).parent
+        ports = json.loads((here / "ports.json").read_text())
+        declared = {p["name"] for p in ports["outputs"]}
+        for sample in sorted((here / "samples").glob("*.json")):
+            payload = json.loads(sample.read_text())
+            out = decide(payload.get("state") or {}, payload.get("context") or {})["output"]
+            assert declared <= set(out), (sample.name, declared - set(out))
+
+    def test_inputs_declare_required_flag(self):
+        here = Path(__file__).parent
+        ports = json.loads((here / "ports.json").read_text())
+        for port in ports["inputs"]:
+            assert isinstance(port["required"], bool), port
