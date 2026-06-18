@@ -425,3 +425,82 @@ def test_cli_reads_stdin_when_no_organ_input():
     proc = _run_cli(env={"ORGAN_INPUT": ""}, stdin_text=f.read_text())
     assert proc.returncode == 0
     assert json.loads(proc.stdout)["output"]["decision"] == "claim"
+
+
+# ---------------------------------------------------------------------------
+# Connection Standard — ports.json + the type vocabulary (CONNECTORS.md).
+# The Lego *stud* check: an organ declares typed ports, every type exists in
+# the shared vocabulary, and decide() actually reads each declared input name
+# and writes each declared output name.
+# ---------------------------------------------------------------------------
+
+_PORTS = Path(__file__).parent / "ports.json"
+_TYPES = Path(__file__).parent / "types.json"
+
+
+def test_ports_json_parses_and_is_a_manifest():
+    ports = json.loads(_PORTS.read_text())
+    assert isinstance(ports, dict)
+    assert isinstance(ports.get("inputs"), list)
+    assert isinstance(ports.get("outputs"), list)
+    assert ports["outputs"], "an organ with no output port is unconnectable"
+    for label in ("inputs", "outputs"):
+        for p in ports[label]:
+            assert isinstance(p.get("name"), str) and p["name"]
+            assert isinstance(p.get("type"), str) and p["type"]
+
+
+def test_every_declared_type_exists_in_vocabulary():
+    ports = json.loads(_PORTS.read_text())
+    vocab = json.loads(_TYPES.read_text())["types"]
+    for label in ("inputs", "outputs"):
+        for p in ports[label]:
+            assert p["type"] in vocab, (
+                f"{label} port {p['name']!r} type {p['type']!r} not in types.json"
+            )
+
+
+def test_decide_reads_every_declared_input_name():
+    ports = json.loads(_PORTS.read_text())
+    src = (Path(__file__).parent / "organ.py").read_text()
+    for p in ports["inputs"]:
+        name = p["name"]
+        assert (
+            f'state.get("{name}"' in src
+            or f'state["{name}"]' in src
+        ), f"decide() never reads state[{name!r}]"
+
+
+def test_decide_writes_every_declared_output_name():
+    ports = json.loads(_PORTS.read_text())
+    sample_dir = Path(__file__).parent / "samples"
+    runs = [decide({}, {})]
+    for f in sorted(sample_dir.glob("*.json")):
+        data = json.loads(f.read_text())
+        runs.append(decide(data.get("state") or {}, data.get("context") or {}))
+    for r in runs:
+        out = r["output"]
+        for p in ports["outputs"]:
+            assert p["name"] in out, f"decide() did not write output[{p['name']!r}]"
+
+
+def test_proposed_types_are_listed_for_review():
+    """Types this organ minted must be flagged as proposed (not silently added)."""
+    types_doc = json.loads(_TYPES.read_text())
+    proposed = types_doc.get("_proposed", [])
+    vocab = types_doc["types"]
+    ports = json.loads(_PORTS.read_text())
+    declared = {p["type"] for p in ports["inputs"] + ports["outputs"]}
+    # Every declared type the seed vocabulary lacked is announced in _proposed.
+    for name in declared:
+        entry = vocab[name]
+        if isinstance(entry, dict) and str(entry.get("_status", "")).startswith("PROPOSED"):
+            assert name in proposed, f"{name} is PROPOSED but missing from _proposed"
+
+
+def test_check_ports_script_passes():
+    proc = subprocess.run(
+        [sys.executable, str(Path(__file__).parent / "check_ports.py")],
+        capture_output=True, text=True,
+    )
+    assert proc.returncode == 0, f"check_ports.py failed:\n{proc.stdout}\n{proc.stderr}"
